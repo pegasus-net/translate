@@ -1,5 +1,6 @@
 package com.icarus.words.view.fragment;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -32,9 +33,17 @@ import a.icarus.component.BaseFragment;
 import a.icarus.utils.FormatUtil;
 import a.icarus.utils.ToastUtil;
 import androidx.annotation.IdRes;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import permissions.dispatcher.NeedsPermission;
+import permissions.dispatcher.OnNeverAskAgain;
+import permissions.dispatcher.OnPermissionDenied;
+import permissions.dispatcher.OnShowRationale;
+import permissions.dispatcher.PermissionRequest;
+import permissions.dispatcher.RuntimePermissions;
 
+@RuntimePermissions
 public class TranslateFragment extends BaseFragment {
     private static final int TEXT = 0;
     private static final int IMAGE = 1;
@@ -193,13 +202,42 @@ public class TranslateFragment extends BaseFragment {
             startActivityForResult(intent, 100);
         }
         if (type == VOICE) {
-            setInputArea(inputVoice);
-            isRecord = true;
-            asrClient.startRecognize(TranslateEngine.FROM, TranslateEngine.TO);
-            waitTranslate();
+            startRecordSafe();
         }
     }
 
+    public void startRecordSafe() {
+        TranslateFragmentPermissionsDispatcher.startRecordWithPermissionCheck(this);
+    }
+
+    @NeedsPermission(Manifest.permission.RECORD_AUDIO)
+    public void startRecord() {
+        setInputArea(inputVoice);
+        isRecord = true;
+        asrClient.startRecognize(TranslateEngine.FROM, TranslateEngine.TO);
+        waitTranslate();
+    }
+
+    @OnShowRationale(Manifest.permission.RECORD_AUDIO)
+    public void show(PermissionRequest request) {
+        request.proceed();
+    }
+
+    @OnNeverAskAgain(Manifest.permission.RECORD_AUDIO)
+    public void never() {
+        ToastUtil.show(mContext, "录音权限已被永久拒绝");
+    }
+
+    @OnPermissionDenied(Manifest.permission.RECORD_AUDIO)
+    public void denied() {
+        ToastUtil.show(mContext, "录音权限获取失败");
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        TranslateFragmentPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults);
+    }
 
     private void exchange() {
         if (animStart) return;
