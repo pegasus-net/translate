@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/item_review"
+        android:icon="@drawable/menu_review"
+        android:title="复习" />
+
+    <item
+        android:id="@+id/item_choose_words"
+        android:icon="@drawable/menu_choose_words"
+        android:title="选词" />
+
+    <item
+        android:id="@+id/item_translation"
+        android:icon="@drawable/menu_translation"
+        android:title="翻译" />
+
+    <item
+        android:id="@+id/item_setup"
+        android:icon="@drawable/menu_setup"
+        android:title="设置" />
+</menu>
