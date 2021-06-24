@@ -48,5 +48,6 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation "com.github.permissions-dispatcher:permissionsdispatcher:4.8.0"
     annotationProcessor "com.github.permissions-dispatcher:permissionsdispatcher-processor:4.8.0"
+    implementation 'org.litepal.guolindev:core:3.2.3'
 
 }

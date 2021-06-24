@@ -1,4 +1,4 @@
-package com.icarus.words.view.avtivity;
+package com.icarus.words.view.activity;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.icarus.words.utils.BottomNavigationHelper;
@@ -35,6 +35,7 @@ public class MainActivity extends BaseActivity {
         fragments.add(new TranslateFragment());
         fragments.add(new ColorFragment(0xff00ffff));
         pager.setAdapter(new SimpleFragmentAdapter(this, fragments));
+        pager.setOffscreenPageLimit(3);
         BottomNavigationHelper.bind(pager, navigation);
     }
 

@@ -20,13 +20,14 @@
             android:name="design_height_in_dp"
             android:value="640" />
 
-        <activity android:name=".view.avtivity.MainActivity">
+        <activity android:name=".view.activity.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".view.activity.CollectActivity"/>
     </application>
 
 </manifest>

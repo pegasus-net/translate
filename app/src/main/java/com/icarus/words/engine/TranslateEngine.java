@@ -24,6 +24,8 @@ public class TranslateEngine {
         textClient = new TextClient(appId, key);
         ocrClient = OcrClientFactory.create(context, appId, key);
         TransAsrConfig config = new TransAsrConfig(appId, key);
+        config.setAutoPlayTts(false);
+        config.setPartialCallbackEnabled(false);
         asrClient = new TransAsrClient(context, config);
         setMode(AUTO, CHINESE);
     }

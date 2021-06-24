@@ -14,10 +14,14 @@ import android.net.Uri;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
@@ -26,16 +30,20 @@ import android.widget.TextView;
 import com.baidu.translate.asr.OnRecognizeListener;
 import com.baidu.translate.asr.TransAsrClient;
 import com.icarus.words.R;
+import com.icarus.words.data.TranslateResult;
 import com.icarus.words.engine.TranslateEngine;
 import com.icarus.words.utils.InputUtil;
+import com.icarus.words.view.activity.CollectActivity;
 
 import a.icarus.component.BaseFragment;
 import a.icarus.utils.FormatUtil;
 import a.icarus.utils.ToastUtil;
+
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
+
 import permissions.dispatcher.NeedsPermission;
 import permissions.dispatcher.OnNeverAskAgain;
 import permissions.dispatcher.OnPermissionDenied;
@@ -48,12 +56,17 @@ public class TranslateFragment extends BaseFragment {
     private static final int TEXT = 0;
     private static final int IMAGE = 1;
     private static final int VOICE = 2;
+    public static final int ERROR_CANCEL = 0;
+    public static final int ERROR_NET = 1;
+    public static final int REQUEST_COLLECT = 201;
+    public static final int REQUEST_PICTURE = 101;
     private ConstraintLayout inputText, inputVoice, inputTip;
     private EditText input;
     private TextView resultDisplay;
     private ImageView inputClear, resultCopy;
     private ImageView loading;
     private Button translate;
+    private CheckBox collect;
     private ImageView exchange;
     private TextView transFrom, transTo, inputCount;
     private String inputStr;
@@ -68,6 +81,8 @@ public class TranslateFragment extends BaseFragment {
     private ImageView voiceCancel, voiceTrans;
     private boolean isRecord = false;
     private ImageView wave;
+    private TranslateResult result;
+    private ImageView enterCollect;
 
     @Override
     protected int setLayout() {
@@ -88,6 +103,7 @@ public class TranslateFragment extends BaseFragment {
         transTo = findViewById(R.id.tv_to);
         inputCount = findViewById(R.id.input_count);
         exchange = findViewById(R.id.exchange);
+        collect = findViewById(R.id.collect);
         loading = findViewById(R.id.loading);
         inputGroup = findViewById(R.id.group);
         tipImage = findViewById(R.id.tip_image);
@@ -95,6 +111,7 @@ public class TranslateFragment extends BaseFragment {
         voiceCancel = findViewById(R.id.voice_cancel);
         voiceTrans = findViewById(R.id.voice_translate);
         wave = findViewById(R.id.wave);
+        enterCollect = findViewById(R.id.enter_collect);
 
     }
 
@@ -109,12 +126,12 @@ public class TranslateFragment extends BaseFragment {
         loading.setVisibility(View.GONE);
         AnimationDrawable waveAnim = (AnimationDrawable) wave.getBackground();
         waveAnim.start();
+        collect.setChecked(false);
         transFrom.setText(TranslateEngine.FROM.equals(TranslateEngine.CHINESE) ? "中文" : "英文");
         transTo.setText(TranslateEngine.TO.equals(TranslateEngine.CHINESE) ? "中文" : "英文");
         TextWatcher inputWatcher = new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
             }
 
             @Override
@@ -126,19 +143,27 @@ public class TranslateFragment extends BaseFragment {
             public void afterTextChanged(Editable s) {
                 inputStr = input.getText().toString();
                 inputCount.setText(FormatUtil.format("%d/2000", inputStr.length()));
-                translate.setEnabled(inputStr.trim().length() != 0);
+                translate.setEnabled(!TextUtils.isEmpty(inputStr.trim()));
             }
         };
         input.addTextChangedListener(inputWatcher);
-        input.setText("");
+        input.setHorizontallyScrolling(false);
+        input.setMaxLines(Integer.MAX_VALUE);
+        input.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                translate();
+                return true;
+            }
+            return false;
+        });
+        clearInput();
         asrClient = TranslateEngine.getAsrClient();
         asrClient.setRecognizeListener((resultType, result) -> {
-            if (resultType == OnRecognizeListener.TYPE_PARTIAL_RESULT) return;
             if (resultType == OnRecognizeListener.TYPE_FINAL_RESULT) {
                 if (result.getError() == 0) {
-                    translateFinish(result.getAsrResult(), result.getTransResult());
+                    translateFinish(result.getAsrResult().trim(), result.getTransResult().trim());
                 } else {
-                    translateFailed();
+                    translateFailed(ERROR_NET);
                 }
             }
         });
@@ -152,10 +177,15 @@ public class TranslateFragment extends BaseFragment {
         inputClear.setOnClickListener(v -> resetInputArea());
         resultCopy.setOnClickListener(v -> copy());
         translate.setOnClickListener(v -> translate());
+        enterCollect.setOnClickListener(v -> {
+            Intent intent = new Intent(mActivity, CollectActivity.class);
+            startActivityForResult(intent, REQUEST_COLLECT);
+        });
         inputGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (isRecord) {
-                cancelTape();
+                cancelRecord();
             }
+            clearInput();
             if (checkedId == R.id.rb_text) {
                 setInputArea(inputText);
                 type = TEXT;
@@ -163,7 +193,6 @@ public class TranslateFragment extends BaseFragment {
             }
             setInputArea(inputTip);
             InputUtil.hide(input);
-            input.setText("");
             if (checkedId == R.id.rb_image) {
                 type = IMAGE;
                 tipImage.setImageResource(R.drawable.tip_image);
@@ -175,20 +204,48 @@ public class TranslateFragment extends BaseFragment {
             }
         });
         tipImage.setOnClickListener(v -> translateSpecial());
-        voiceCancel.setOnClickListener(v -> cancelTape());
+        voiceCancel.setOnClickListener(v -> cancelRecord());
         voiceTrans.setOnClickListener(v -> {
             asrClient.stopRecognize();
             isRecord = false;
             setInputArea(inputTip);
         });
+        collect.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (result == null || TextUtils.isEmpty(result.dst)) {
+                if (isChecked) {
+                    buttonView.setChecked(false);
+                    ToastUtil.show(mContext, "无效的收藏");
+                }
+                return;
+            }
+            if (isChecked) {
+                result.save();
+                ToastUtil.show(mContext, "收藏成功");
+            } else {
+                if (result.isSaved()) {
+                    result.delete();
+                    ToastUtil.show(mContext, "取消收藏");
+                }
+            }
+        });
     }
 
-    private void cancelTape() {
+    private void cancelRecord() {
         isRecord = false;
         asrClient.cancelRecognize();
         setInputArea(inputTip);
-        translateFailed();
+        translateFailed(ERROR_CANCEL);
     }
+
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (isRecord) {
+            cancelRecord();
+        }
+    }
+
 
     private void translateSpecial() {
         if (isTranslate) {
@@ -199,7 +256,7 @@ public class TranslateFragment extends BaseFragment {
             Intent intent = new Intent();
             intent.setType("image/*");
             intent.setAction(Intent.ACTION_GET_CONTENT);
-            startActivityForResult(intent, 100);
+            startActivityForResult(intent, REQUEST_PICTURE);
         }
         if (type == VOICE) {
             startRecordSafe();
@@ -215,7 +272,7 @@ public class TranslateFragment extends BaseFragment {
         setInputArea(inputVoice);
         isRecord = true;
         asrClient.startRecognize(TranslateEngine.FROM, TranslateEngine.TO);
-        waitTranslate();
+        waitTranslateFinish();
     }
 
     @OnShowRationale(Manifest.permission.RECORD_AUDIO)
@@ -272,13 +329,17 @@ public class TranslateFragment extends BaseFragment {
             ToastUtil.show(mContext, "正在翻译中");
             return;
         }
-        waitTranslate();
+        if (TextUtils.isEmpty(inputStr.trim())) {
+            ToastUtil.show(mContext, "翻译内容不能为空");
+            return;
+        }
+        waitTranslateFinish();
         TranslateEngine.textTranslate(inputStr, (state, response) -> {
             mActivity.runOnUiThread(() -> {
                 if (state && response.isSuccess()) {
-                    translateFinish(response.getSrc(), response.getDst());
+                    translateFinish(response.getSrc().trim(), response.getDst().trim());
                 } else {
-                    translateFailed();
+                    translateFailed(ERROR_NET);
                 }
             });
             isTranslate = false;
@@ -287,11 +348,13 @@ public class TranslateFragment extends BaseFragment {
 
 
     private void copy() {
-        String result = resultDisplay.getText().toString().trim();
-        if (!TextUtils.isEmpty(result)) {
+
+        if (result != null && !TextUtils.isEmpty(result.dst)) {
             ClipboardManager manager = (ClipboardManager) mContext.getSystemService(Context.CLIPBOARD_SERVICE);
-            manager.setPrimaryClip(ClipData.newPlainText("text", result));
+            manager.setPrimaryClip(ClipData.newPlainText("text", result.dst));
             ToastUtil.show(mContext, "复制成功");
+        } else {
+            ToastUtil.show(mContext, "什么都没有");
         }
     }
 
@@ -302,10 +365,14 @@ public class TranslateFragment extends BaseFragment {
     }
 
     private void resetInputArea() {
-        input.setText("");
+        clearInput();
         if (type != TEXT) {
             setInputArea(inputTip);
         }
+    }
+
+    private void clearInput() {
+        input.setText("");
     }
 
     private <T extends View> T findViewById(@IdRes int id) {
@@ -315,28 +382,36 @@ public class TranslateFragment extends BaseFragment {
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 100 && resultCode == Activity.RESULT_OK) {
+        if (requestCode == REQUEST_PICTURE && resultCode == Activity.RESULT_OK && data != null) {
             Uri uri = data.getData();
             ContentResolver resolver = mContext.getContentResolver();
             try {
                 Bitmap bitmap = BitmapFactory.decodeStream(resolver.openInputStream(uri));
-                waitTranslate();
+                waitTranslateFinish();
                 TranslateEngine.imgTranslate(bitmap, ocrResult -> {
                     if (null != ocrResult && ocrResult.getError() == 0) {
-                        translateFinish(ocrResult.getSumSrc(), ocrResult.getSumDst());
+                        translateFinish(ocrResult.getSumSrc().trim(), ocrResult.getSumDst().trim());
                     } else {
-                        translateFailed();
+                        translateFailed(ERROR_NET);
                     }
                 });
             } catch (Exception e) {
                 e.printStackTrace();
-                translateFailed();
+                translateFailed(ERROR_NET);
             }
+        }
+        if (requestCode == REQUEST_COLLECT && resultCode == Activity.RESULT_OK) {
+            if (result.isSaved()) {
+                result.delete();
+            }
+            collect.setChecked(false);
         }
     }
 
-    private void waitTranslate() {
+    private void waitTranslateFinish() {
         isTranslate = true;
+        result = null;
+        collect.setChecked(false);
         InputUtil.hide(input);
         resultDisplay.setText("");
         loading.setVisibility(View.VISIBLE);
@@ -344,6 +419,7 @@ public class TranslateFragment extends BaseFragment {
     }
 
     private void translateFinish(String src, String dst) {
+        result = new TranslateResult(type, src, dst);
         loadingAnim.cancel();
         loading.setVisibility(View.GONE);
         resultDisplay.setTextColor(0xFF333333);
@@ -353,10 +429,17 @@ public class TranslateFragment extends BaseFragment {
         isTranslate = false;
     }
 
-    private void translateFailed() {
+    private void translateFailed(int code) {
         loadingAnim.cancel();
         loading.setVisibility(View.GONE);
         isTranslate = false;
-        ToastUtil.show(mContext, "翻译失败");
+        switch (code) {
+            case ERROR_CANCEL:
+                break;
+            case ERROR_NET:
+                ToastUtil.show(mContext, "翻译失败");
+                break;
+        }
+
     }
 }

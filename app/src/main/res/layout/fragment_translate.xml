@@ -25,6 +25,17 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <ImageView
+            android:id="@+id/enter_collect"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:paddingStart="10dp"
+            android:paddingEnd="13dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/collect_enter" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <View
@@ -139,8 +150,7 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/input_text"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                tools:visibility="gone">
+                android:layout_height="match_parent">
 
                 <EditText
                     android:id="@+id/input"
@@ -157,6 +167,8 @@
                     android:textColorHint="#FFD2D2D2"
                     android:textCursorDrawable="@null"
                     android:textSize="14sp"
+                    android:imeOptions="actionDone"
+                    android:inputType="text"
                     app:layout_constraintBottom_toTopOf="@+id/input_count"
                     app:layout_constraintEnd_toStartOf="@+id/input_clear"
                     app:layout_constraintStart_toStartOf="parent"
@@ -191,8 +203,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="#FFF2F2F2"
-                android:visibility="gone"
-                tools:visibility="visible">
+                android:visibility="gone">
 
 
                 <ImageView
@@ -277,7 +288,7 @@
                 android:layout_marginEnd="20dp"
                 android:orientation="vertical"
                 android:scrollbars="none"
-                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintBottom_toTopOf="@+id/copy"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.0"
                 app:layout_constraintStart_toStartOf="parent"
@@ -288,6 +299,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="翻译结果..."
+                    android:textIsSelectable="true"
                     android:textColor="#ffd2d2d2"
                     android:textSize="14sp" />
             </ScrollView>
