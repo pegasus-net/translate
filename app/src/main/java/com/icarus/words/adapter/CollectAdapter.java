@@ -20,7 +20,7 @@ import com.icarus.words.data.TranslateResult;
 
 import java.util.List;
 
-import a.icarus.simpleImpl.ListAdapter;
+import a.icarus.impl.ListAdapter;
 
 public class CollectAdapter extends ListAdapter<TranslateResult, CollectAdapter.ViewHolder> {
     public final int[] type;

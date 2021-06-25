@@ -30,16 +30,6 @@
         <activity android:name=".view.activity.CollectActivity" />
         <activity android:name=".crop.CropImageActivity" />
         <activity android:name=".view.activity.FreeCopyActivity" />
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="com.words.provider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
     </application>
 
 </manifest>

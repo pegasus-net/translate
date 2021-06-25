@@ -3,10 +3,7 @@ package com.icarus.words.view.fragment;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.ContentResolver;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -33,6 +30,10 @@ import android.widget.PopupWindow;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.constraintlayout.widget.ConstraintLayout;
+
 import com.baidu.translate.asr.OnRecognizeListener;
 import com.baidu.translate.asr.TransAsrClient;
 import com.icarus.words.R;
@@ -40,21 +41,15 @@ import com.icarus.words.crop.Crop;
 import com.icarus.words.data.TranslateResult;
 import com.icarus.words.engine.TranslateEngine;
 import com.icarus.words.engine.entity.ErrorCode;
-import com.icarus.words.utils.FileUriParse;
-import com.icarus.words.utils.InputUtil;
 import com.icarus.words.view.activity.CollectActivity;
 
 import java.io.File;
 
 import a.icarus.component.BaseFragment;
-import a.icarus.utils.FormatUtil;
+import a.icarus.utils.FileUtil;
+import a.icarus.utils.SoftInputUtil;
+import a.icarus.utils.Strings;
 import a.icarus.utils.ToastUtil;
-
-import androidx.annotation.IdRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.constraintlayout.widget.ConstraintLayout;
-
 import permissions.dispatcher.NeedsPermission;
 import permissions.dispatcher.OnNeverAskAgain;
 import permissions.dispatcher.OnPermissionDenied;
@@ -156,7 +151,7 @@ public class TranslateFragment extends BaseFragment {
             @Override
             public void afterTextChanged(Editable s) {
                 inputStr = input.getText().toString();
-                inputCount.setText(FormatUtil.format("%d/2000", inputStr.length()));
+                inputCount.setText(Strings.format("%d/2000", inputStr.length()));
                 translate.setEnabled(!TextUtils.isEmpty(inputStr.trim()));
             }
         };
@@ -206,7 +201,7 @@ public class TranslateFragment extends BaseFragment {
                 return;
             }
             setInputArea(inputTip);
-            InputUtil.hide(input);
+            SoftInputUtil.hideSoftInput(input);
             if (checkedId == R.id.rb_image) {
                 type = IMAGE;
                 tipImage.setImageResource(R.drawable.tip_image);
@@ -228,17 +223,17 @@ public class TranslateFragment extends BaseFragment {
             if (result == null || TextUtils.isEmpty(result.dst)) {
                 if (isChecked) {
                     buttonView.setChecked(false);
-                    ToastUtil.show(mContext, "无效的收藏");
+                    ToastUtil.show("无效的收藏");
                 }
                 return;
             }
             if (isChecked) {
                 result.save();
-                ToastUtil.show(mContext, "收藏成功");
+                ToastUtil.show("收藏成功");
             } else {
                 if (result.isSaved()) {
                     result.delete();
-                    ToastUtil.show(mContext, "取消收藏");
+                    ToastUtil.show("取消收藏");
                 }
             }
         });
@@ -263,7 +258,7 @@ public class TranslateFragment extends BaseFragment {
 
     private void translateSpecial() {
         if (isTranslate) {
-            ToastUtil.show(mContext, "正在翻译中");
+            ToastUtil.show("正在翻译中");
             return;
         }
         if (type == IMAGE) {
@@ -287,7 +282,7 @@ public class TranslateFragment extends BaseFragment {
         contentView.findViewById(R.id.item_close).setOnClickListener(v -> windowClose());
         contentView.findViewById(R.id.item_0).setOnClickListener(v -> {
             File file = new File(mContext.getCacheDir(), "original_image.jpg");
-            originalImageUri = FileUriParse.parse(file);
+            originalImageUri = FileUtil.getEmptyUri(file);
             Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
             intent.putExtra(MediaStore.EXTRA_OUTPUT, originalImageUri);
             startActivityForResult(intent, TAKE_PHOTO);
@@ -346,12 +341,12 @@ public class TranslateFragment extends BaseFragment {
 
     @OnNeverAskAgain(Manifest.permission.RECORD_AUDIO)
     public void never() {
-        ToastUtil.show(mContext, "录音权限已被永久拒绝");
+        ToastUtil.show("录音权限已被永久拒绝");
     }
 
     @OnPermissionDenied(Manifest.permission.RECORD_AUDIO)
     public void denied() {
-        ToastUtil.show(mContext, "录音权限获取失败");
+        ToastUtil.show("录音权限获取失败");
     }
 
     @Override
@@ -390,11 +385,11 @@ public class TranslateFragment extends BaseFragment {
 
     private void translate() {
         if (isTranslate) {
-            ToastUtil.show(mContext, "正在翻译中");
+            ToastUtil.show("正在翻译中");
             return;
         }
         if (TextUtils.isEmpty(inputStr.trim())) {
-            ToastUtil.show(mContext, "翻译内容不能为空");
+            ToastUtil.show("翻译内容不能为空");
             return;
         }
         waitTranslateFinish();
@@ -417,9 +412,9 @@ public class TranslateFragment extends BaseFragment {
 
     private void copy() {
         if (result != null && !TextUtils.isEmpty(result.dst)) {
-            InputUtil.copy(result.dst);
+            SoftInputUtil.copy(result.dst);
         } else {
-            ToastUtil.show(mContext, "什么都没有");
+            ToastUtil.show("什么都没有");
         }
     }
 
@@ -442,7 +437,7 @@ public class TranslateFragment extends BaseFragment {
 
 
     private void cropOriginalBitmap(Uri uri) {
-        Crop.of(uri, FileUriParse.parse(new File(mContext.getCacheDir(), "crop_image.jpg"))).start(this);
+        Crop.of(uri, FileUtil.getEmptyUri(new File(mContext.getCacheDir(), "crop_image.jpg"))).start(this);
     }
 
     //TODO onActivityResult;
@@ -497,7 +492,7 @@ public class TranslateFragment extends BaseFragment {
         isTranslate = true;
         result = null;
         collect.setChecked(false);
-        InputUtil.hide(input);
+        SoftInputUtil.hideSoftInput(input);
         resultDisplay.setText("");
         loading.setVisibility(View.VISIBLE);
         loading.startAnimation(loadingAnim);
@@ -519,7 +514,7 @@ public class TranslateFragment extends BaseFragment {
         loading.setVisibility(View.GONE);
         isTranslate = false;
         if (code != ErrorCode.CANCEL) {
-            ToastUtil.show(mContext, code + "翻译失败");
+            ToastUtil.show(code + "翻译失败");
         }
 
     }

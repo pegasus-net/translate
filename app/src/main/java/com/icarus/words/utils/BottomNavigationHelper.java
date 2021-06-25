@@ -1,11 +1,13 @@
 package com.icarus.words.utils;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import androidx.viewpager.widget.PagerAdapter;
+import androidx.viewpager.widget.ViewPager;
 
 import com.google.android.material.bottomnavigation.BottomNavigationItemView;
 import com.google.android.material.bottomnavigation.BottomNavigationMenuView;
@@ -14,9 +16,7 @@ import com.icarus.words.R;
 
 import java.util.Objects;
 
-import a.icarus.utils.DpUtil;
-import androidx.viewpager.widget.PagerAdapter;
-import androidx.viewpager.widget.ViewPager;
+import a.icarus.utils.ConversionTool;
 
 
 public class BottomNavigationHelper {
@@ -40,7 +40,8 @@ public class BottomNavigationHelper {
                 mBadge.setVisibility(View.VISIBLE);
                 TextView textView = mBadge.findViewById(R.id.count);
                 ViewGroup.LayoutParams layoutParams = textView.getLayoutParams();
-                layoutParams.width = count < 100 ? (int) DpUtil.dp2px(textView.getContext(), 16) : ViewGroup.LayoutParams.WRAP_CONTENT;
+                layoutParams.width = count < 100 ? (int) ConversionTool.dp2px(16) :
+                        ViewGroup.LayoutParams.WRAP_CONTENT;
                 textView.setLayoutParams(layoutParams);
                 textView.setText(count < 100 ? String.valueOf(count) : "99+");
             }

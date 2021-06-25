@@ -1,17 +1,17 @@
 package com.icarus.words.engine;
 
-import android.util.Log;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.icarus.words.engine.entity.ErrorCode;
 import com.icarus.words.engine.entity.TextResponse;
-import com.icarus.words.utils.MD5Util;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
+import a.icarus.utils.MD5;
+import a.icarus.utils.OkHttpUtil;
+import a.icarus.utils.Strings;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -31,24 +31,20 @@ public class TextClient {
     }
 
     private String createUrl(String words, String from, String to) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(ROOT_URL).append("?")
-                .append("q=").append(words).append("&")
-                .append("from=").append(from).append("&")
-                .append("to=").append(to).append("&")
-                .append("appid=").append(APP_ID).append("&")
-                .append("salt=").append(SALT).append("&")
-                .append("sign=").append(MD5Util.encode(APP_ID + words + SALT + KEY, false));
-        return builder.toString();
+        return ROOT_URL.concat("?")
+                .concat("q=").concat(words).concat("&")
+                .concat("from=").concat(from).concat("&")
+                .concat("to=").concat(to).concat("&")
+                .concat("appid=").concat(APP_ID).concat("&")
+                .concat("salt=").concat(SALT).concat("&")
+                .concat("sign=").concat(MD5.encode(APP_ID + words + SALT + KEY, false));
+
     }
 
     public void translateAsync(String from, String to, String words, TextCallBack callback) {
         words = words.replaceAll("\n", " ");
         String url = createUrl(words, from, to);
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder()
-                .url(url).build();
-        client.newCall(request).enqueue(new Callback() {
+        OkHttpUtil.asyncCall(url, new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
                 callback.onResponse(ErrorCode.NET, null);
@@ -76,7 +72,6 @@ public class TextClient {
                 }
             }
         });
-
     }
 
     public interface TextCallBack {
