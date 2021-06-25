@@ -276,7 +276,8 @@ public class TranslateFragment extends BaseFragment {
 
 
     private void createWindow() {
-        View contentView = LayoutInflater.from(mActivity).inflate(R.layout.window_upload_picture, null);
+        View contentView = LayoutInflater.from(mActivity).inflate(R.layout.window_upload_picture,
+                (ViewGroup) rootView, false);
         mPopWindow = new PopupWindow(contentView,
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         mPopWindow.setContentView(contentView);
@@ -310,6 +311,7 @@ public class TranslateFragment extends BaseFragment {
     private void screenAlphaAnimStart(float from, float to, int duration) {
         if (animator != null && animator.isRunning()) {
             animator.cancel();
+            animator = null;
         }
         animator = ValueAnimator.ofFloat(from, to);
         animator.setDuration(duration);
@@ -414,11 +416,8 @@ public class TranslateFragment extends BaseFragment {
 
 
     private void copy() {
-
         if (result != null && !TextUtils.isEmpty(result.dst)) {
-            ClipboardManager manager = (ClipboardManager) mContext.getSystemService(Context.CLIPBOARD_SERVICE);
-            manager.setPrimaryClip(ClipData.newPlainText("text", result.dst));
-            ToastUtil.show(mContext, "复制成功");
+            InputUtil.copy(result.dst);
         } else {
             ToastUtil.show(mContext, "什么都没有");
         }
@@ -441,9 +440,6 @@ public class TranslateFragment extends BaseFragment {
         input.setText("");
     }
 
-    private <T extends View> T findViewById(@IdRes int id) {
-        return rootView.findViewById(id);
-    }
 
     private void cropOriginalBitmap(Uri uri) {
         Crop.of(uri, FileUriParse.parse(new File(mContext.getCacheDir(), "crop_image.jpg"))).start(this);
@@ -456,7 +452,7 @@ public class TranslateFragment extends BaseFragment {
         if (resultCode != Activity.RESULT_OK) return;
         switch (requestCode) {
             case REQUEST_COLLECT:
-                if (result.isSaved()) {
+                if (result != null && result.isSaved()) {
                     result.delete();
                 }
                 collect.setChecked(false);
