@@ -110,11 +110,11 @@
                 android:id="@+id/exchange"
                 android:layout_width="wrap_content"
                 android:layout_height="0dp"
+                android:layout_marginStart="25dp"
                 android:padding="10dp"
                 android:src="@drawable/exchange"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="@+id/translate"
-                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/tv_from"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
@@ -123,12 +123,12 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:layout_marginEnd="20dp"
+                android:layout_marginStart="25dp"
                 android:text="英文"
                 android:textColor="#ff666666"
                 android:textSize="14sp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/exchange"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <Button
@@ -137,7 +137,6 @@
                 android:layout_height="27dp"
                 android:layout_marginEnd="13dp"
                 android:background="@drawable/translate_button"
-                android:visibility="gone"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
