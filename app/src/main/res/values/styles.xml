@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar.Bridge" />
 
-    <style name="navigation_text_size">
+    <style name="popupWindow_anim" parent="android:Animation">
+        <item name="android:windowEnterAnimation">@anim/popup_enter</item>
+        <item name="android:windowExitAnimation">@anim/popup_exit</item>
+    </style>
+
+    <style name="NavigationTextSize">
         <item name="android:textSize">12sp</item>
+    </style>
+    <style name="PopupWindowItem">
+        <item name="android:textSize">17sp</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">53dp</item>
+        <item name="android:gravity">center</item>
     </style>
 </resources>

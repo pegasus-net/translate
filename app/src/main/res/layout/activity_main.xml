@@ -20,8 +20,8 @@
         android:layout_height="wrap_content"
         android:background="#fff5f5f5"
         app:itemIconTint="@drawable/bottom_menu_color"
-        app:itemTextAppearanceActive="@style/navigation_text_size"
-        app:itemTextAppearanceInactive="@style/navigation_text_size"
+        app:itemTextAppearanceActive="@style/NavigationTextSize"
+        app:itemTextAppearanceInactive="@style/NavigationTextSize"
         app:itemTextColor="@drawable/bottom_menu_color"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_navigation_menu" />

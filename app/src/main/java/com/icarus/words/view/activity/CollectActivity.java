@@ -66,8 +66,8 @@ public class CollectActivity extends BaseActivity {
         public View getView(int position, View convertView, ViewGroup parent) {
             View inflate = LayoutInflater.from(parent.getContext()).inflate(R.layout.result_item,
                     parent, false);
-            ((TextView) inflate.findViewById(R.id.src)).setText("    " + getItem(position).src);
-            ((TextView) inflate.findViewById(R.id.dst)).setText(getItem(position).dst);
+            ((TextView) inflate.findViewById(R.id.src)).setText(getItem(position).src);
+            ((TextView) inflate.findViewById(R.id.dst)).setText("    " + getItem(position).dst);
             ((ImageView) inflate.findViewById(R.id.type)).setImageResource(type[getItem(position).type]);
             inflate.findViewById(R.id.delete).setOnClickListener(v -> {
                 getItem(position).delete();

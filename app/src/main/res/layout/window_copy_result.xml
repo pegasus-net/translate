@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/card_10">
+
+    <TextView
+        android:id="@+id/item_0"
+        style="@style/PopupWindowItem"
+        android:text="复制原文"
+        android:textColor="#ff333333"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#FFEEEDED"
+      />
+
+    <TextView
+        android:id="@+id/item_1"
+        style="@style/PopupWindowItem"
+        android:text="复制译文"
+        android:textColor="#ff333333"
+       />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#FFEEEDED" />
+
+    <TextView
+        android:id="@+id/item_2"
+        style="@style/PopupWindowItem"
+        android:text="自由复制"
+        android:textColor="#ff333333"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#FFEEEDED" />
+
+    <TextView
+        android:id="@+id/item_3"
+        style="@style/PopupWindowItem"
+        android:text="删除"
+        android:textColor="#ffff4949"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="7dp"
+        android:background="#FFEEEDED" />
+
+    <TextView
+        android:id="@+id/item_close"
+        style="@style/PopupWindowItem"
+        android:text="取消"
+        android:textColor="#ff999999"/>
+</LinearLayout>

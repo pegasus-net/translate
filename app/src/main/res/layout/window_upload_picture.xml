@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/card_10"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/item_0"
+        style="@style/PopupWindowItem"
+        android:text="拍摄"
+        android:textColor="#ff333333" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#FFEEEDED" />
+
+    <TextView
+        android:id="@+id/item_1"
+        style="@style/PopupWindowItem"
+        android:text="从手机相册选择"
+        android:textColor="#ff333333" />
+
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="7dp"
+        android:background="#FFEEEDED" />
+
+    <TextView
+        android:id="@+id/item_close"
+        style="@style/PopupWindowItem"
+        android:text="取消"
+        android:textColor="#ff999999" />
+</LinearLayout>

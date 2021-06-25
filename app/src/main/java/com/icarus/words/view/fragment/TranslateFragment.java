@@ -1,6 +1,7 @@
 package com.icarus.words.view.fragment;
 
 import android.Manifest;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -10,13 +11,17 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.AnimationDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.util.Log;
-import android.view.KeyEvent;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
 import android.view.inputmethod.EditorInfo;
@@ -24,16 +29,22 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.PopupWindow;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.baidu.translate.asr.OnRecognizeListener;
 import com.baidu.translate.asr.TransAsrClient;
 import com.icarus.words.R;
+import com.icarus.words.crop.Crop;
 import com.icarus.words.data.TranslateResult;
 import com.icarus.words.engine.TranslateEngine;
+import com.icarus.words.engine.entity.ErrorCode;
+import com.icarus.words.utils.FileUriParse;
 import com.icarus.words.utils.InputUtil;
 import com.icarus.words.view.activity.CollectActivity;
+
+import java.io.File;
 
 import a.icarus.component.BaseFragment;
 import a.icarus.utils.FormatUtil;
@@ -56,10 +67,9 @@ public class TranslateFragment extends BaseFragment {
     private static final int TEXT = 0;
     private static final int IMAGE = 1;
     private static final int VOICE = 2;
-    public static final int ERROR_CANCEL = 0;
-    public static final int ERROR_NET = 1;
-    public static final int REQUEST_COLLECT = 201;
     public static final int REQUEST_PICTURE = 101;
+    private static final int TAKE_PHOTO = 102;
+    public static final int REQUEST_COLLECT = 201;
     private ConstraintLayout inputText, inputVoice, inputTip;
     private EditText input;
     private TextView resultDisplay;
@@ -83,6 +93,9 @@ public class TranslateFragment extends BaseFragment {
     private ImageView wave;
     private TranslateResult result;
     private ImageView enterCollect;
+    private Uri originalImageUri;
+    private PopupWindow mPopWindow;
+    private ValueAnimator animator;
 
     @Override
     protected int setLayout() {
@@ -117,6 +130,7 @@ public class TranslateFragment extends BaseFragment {
 
     @Override
     protected void initData() {
+        createWindow();
         setInputArea(inputText);
         loadingAnim = new RotateAnimation(0, 360,
                 Animation.RELATIVE_TO_SELF, 0.5f,
@@ -163,7 +177,7 @@ public class TranslateFragment extends BaseFragment {
                 if (result.getError() == 0) {
                     translateFinish(result.getAsrResult().trim(), result.getTransResult().trim());
                 } else {
-                    translateFailed(ERROR_NET);
+                    translateFailed(result.getError());
                 }
             }
         });
@@ -234,7 +248,7 @@ public class TranslateFragment extends BaseFragment {
         isRecord = false;
         asrClient.cancelRecognize();
         setInputArea(inputTip);
-        translateFailed(ERROR_CANCEL);
+        translateFailed(ErrorCode.CANCEL);
     }
 
 
@@ -253,14 +267,62 @@ public class TranslateFragment extends BaseFragment {
             return;
         }
         if (type == IMAGE) {
-            Intent intent = new Intent();
-            intent.setType("image/*");
-            intent.setAction(Intent.ACTION_GET_CONTENT);
-            startActivityForResult(intent, REQUEST_PICTURE);
+            windowOpen();
         }
         if (type == VOICE) {
             startRecordSafe();
         }
+    }
+
+
+    private void createWindow() {
+        View contentView = LayoutInflater.from(mActivity).inflate(R.layout.window_upload_picture, null);
+        mPopWindow = new PopupWindow(contentView,
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        mPopWindow.setContentView(contentView);
+        mPopWindow.setAnimationStyle(R.style.popupWindow_anim);
+        mPopWindow.setBackgroundDrawable(new ColorDrawable(0));
+        mPopWindow.setOnDismissListener(() -> screenAlphaAnimStart(0.5f, 1.0f, 300));
+        contentView.findViewById(R.id.item_close).setOnClickListener(v -> windowClose());
+        contentView.findViewById(R.id.item_0).setOnClickListener(v -> {
+            File file = new File(mContext.getCacheDir(), "original_image.jpg");
+            originalImageUri = FileUriParse.parse(file);
+            Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, originalImageUri);
+            startActivityForResult(intent, TAKE_PHOTO);
+            windowClose();
+        });
+        contentView.findViewById(R.id.item_1).setOnClickListener(v -> {
+            Intent intent = new Intent();
+            intent.setType("image/*");
+            intent.setAction(Intent.ACTION_GET_CONTENT);
+            startActivityForResult(intent, REQUEST_PICTURE);
+            windowClose();
+        });
+    }
+
+    private void windowOpen() {
+        if (mPopWindow.isShowing()) return;
+        mPopWindow.showAtLocation(rootView, Gravity.BOTTOM, 0, 0);
+        screenAlphaAnimStart(1.0f, 0.5f, 500);
+    }
+
+    private void screenAlphaAnimStart(float from, float to, int duration) {
+        if (animator != null && animator.isRunning()) {
+            animator.cancel();
+        }
+        animator = ValueAnimator.ofFloat(from, to);
+        animator.setDuration(duration);
+        animator.addUpdateListener(animation -> {
+            WindowManager.LayoutParams attributes = mActivity.getWindow().getAttributes();
+            attributes.alpha = (float) animation.getAnimatedValue();
+            mActivity.getWindow().setAttributes(attributes);
+        });
+        animator.start();
+    }
+
+    private void windowClose() {
+        mPopWindow.dismiss();
     }
 
     public void startRecordSafe() {
@@ -336,10 +398,14 @@ public class TranslateFragment extends BaseFragment {
         waitTranslateFinish();
         TranslateEngine.textTranslate(inputStr, (state, response) -> {
             mActivity.runOnUiThread(() -> {
-                if (state && response.isSuccess()) {
+                if (state != 0) {
+                    translateFailed(state);
+                    return;
+                }
+                if (response.isSuccess()) {
                     translateFinish(response.getSrc().trim(), response.getDst().trim());
                 } else {
-                    translateFailed(ERROR_NET);
+                    translateFailed(response.getError());
                 }
             });
             isTranslate = false;
@@ -379,34 +445,57 @@ public class TranslateFragment extends BaseFragment {
         return rootView.findViewById(id);
     }
 
+    private void cropOriginalBitmap(Uri uri) {
+        Crop.of(uri, FileUriParse.parse(new File(mContext.getCacheDir(), "crop_image.jpg"))).start(this);
+    }
+
+    //TODO onActivityResult;
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_PICTURE && resultCode == Activity.RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            ContentResolver resolver = mContext.getContentResolver();
-            try {
-                Bitmap bitmap = BitmapFactory.decodeStream(resolver.openInputStream(uri));
-                waitTranslateFinish();
-                TranslateEngine.imgTranslate(bitmap, ocrResult -> {
-                    if (null != ocrResult && ocrResult.getError() == 0) {
-                        translateFinish(ocrResult.getSumSrc().trim(), ocrResult.getSumDst().trim());
-                    } else {
-                        translateFailed(ERROR_NET);
-                    }
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                translateFailed(ERROR_NET);
+        if (resultCode != Activity.RESULT_OK) return;
+        switch (requestCode) {
+            case REQUEST_COLLECT:
+                if (result.isSaved()) {
+                    result.delete();
+                }
+                collect.setChecked(false);
+                break;
+            case TAKE_PHOTO: {
+                cropOriginalBitmap(originalImageUri);
             }
+            case REQUEST_PICTURE:
+                if (data != null) {
+                    cropOriginalBitmap(data.getData());
+                }
+                break;
+            case Crop.REQUEST_CROP:
+                if (data != null) {
+                    imgTranslate(data.getData());
+                }
+                break;
         }
-        if (requestCode == REQUEST_COLLECT && resultCode == Activity.RESULT_OK) {
-            if (result.isSaved()) {
-                result.delete();
-            }
-            collect.setChecked(false);
+
+    }
+
+    private void imgTranslate(Uri uri) {
+        ContentResolver resolver = mContext.getContentResolver();
+        try {
+            Bitmap bitmap = BitmapFactory.decodeStream(resolver.openInputStream(uri));
+            waitTranslateFinish();
+            TranslateEngine.imgTranslate(bitmap, ocrResult -> {
+                if (null != ocrResult && ocrResult.getError() == 0) {
+                    translateFinish(ocrResult.getSumSrc().trim(), ocrResult.getSumDst().trim());
+                } else {
+                    translateFailed(ocrResult.getError());
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+            translateFailed(ErrorCode.FILE);
         }
     }
+
 
     private void waitTranslateFinish() {
         isTranslate = true;
@@ -433,13 +522,17 @@ public class TranslateFragment extends BaseFragment {
         loadingAnim.cancel();
         loading.setVisibility(View.GONE);
         isTranslate = false;
-        switch (code) {
-            case ERROR_CANCEL:
-                break;
-            case ERROR_NET:
-                ToastUtil.show(mContext, "翻译失败");
-                break;
+        if (code != ErrorCode.CANCEL) {
+            ToastUtil.show(mContext, code + "翻译失败");
         }
 
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mPopWindow != null && mPopWindow.isShowing()) {
+            mPopWindow.dismiss();
+        }
     }
 }

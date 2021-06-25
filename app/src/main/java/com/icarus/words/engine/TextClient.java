@@ -3,6 +3,8 @@ package com.icarus.words.engine;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import com.icarus.words.engine.entity.ErrorCode;
 import com.icarus.words.engine.entity.TextResponse;
 import com.icarus.words.utils.MD5Util;
 
@@ -49,7 +51,7 @@ public class TextClient {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                callback.onResponse(false, null);
+                callback.onResponse(ErrorCode.NET, null);
                 e.printStackTrace();
             }
 
@@ -57,20 +59,20 @@ public class TextClient {
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                 ResponseBody body = response.body();
                 if (null == body) {
-                    callback.onResponse(false, null);
+                    callback.onResponse(ErrorCode.NET, null);
                     return;
                 }
                 String json = body.string();
                 try {
                     TextResponse textResponse = new Gson().fromJson(json, TextResponse.class);
                     if (null == textResponse) {
-                        callback.onResponse(false, null);
+                        callback.onResponse(ErrorCode.JSON, null);
                         return;
                     }
-                    callback.onResponse(true, textResponse);
-                } catch (Exception e) {
+                    callback.onResponse(0, textResponse);
+                } catch (JsonSyntaxException e) {
                     e.printStackTrace();
-                    callback.onResponse(false, null);
+                    callback.onResponse(ErrorCode.JSON, null);
                 }
             }
         });
@@ -78,6 +80,6 @@ public class TextClient {
     }
 
     public interface TextCallBack {
-        void onResponse(boolean state, TextResponse response);
+        void onResponse(int code, TextResponse response);
     }
 }

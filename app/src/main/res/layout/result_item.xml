@@ -8,7 +8,7 @@
     android:paddingBottom="27dp">
 
     <TextView
-        android:id="@+id/src"
+        android:id="@+id/dst"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:textColor="#ff333333"
@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/dst"
+        android:id="@+id/src"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
@@ -29,14 +29,14 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/delete"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/src" />
+        app:layout_constraintTop_toBottomOf="@+id/dst" />
 
     <ImageView
         android:id="@+id/type"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintStart_toStartOf="@+id/src"
-        app:layout_constraintTop_toTopOf="@+id/src"
+        app:layout_constraintStart_toStartOf="@+id/dst"
+        app:layout_constraintTop_toTopOf="@+id/dst"
         app:srcCompat="@drawable/type_text" />
 
     <ImageView
