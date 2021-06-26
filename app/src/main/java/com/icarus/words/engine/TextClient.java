@@ -23,7 +23,7 @@ public class TextClient {
     private final String APP_ID;
     private final String KEY;
     public static final String ROOT_URL = "https://api.fanyi.baidu.com/api/trans/vip/translate";
-    public static final String SALT = "1456225";
+    public static final String SALT = String.valueOf(System.currentTimeMillis()/1000);
 
     public TextClient(String appId, String key) {
         APP_ID = appId;

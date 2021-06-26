@@ -28,7 +28,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".view.activity.CollectActivity" />
-        <activity android:name=".crop.CropImageActivity" />
+        <activity android:name=".view.activity.CropActivity" />
         <activity android:name=".view.activity.FreeCopyActivity" />
     </application>
 
