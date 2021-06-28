@@ -1,5 +1,6 @@
 package com.icarus.words.view.activity;
 
+import android.view.View;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import a.icarus.component.BaseActivity;
+import androidx.recyclerview.widget.RecyclerView;
 
 public class WordActivity extends BaseActivity {
     private ListView listView;
@@ -31,7 +33,12 @@ public class WordActivity extends BaseActivity {
     protected void initData() {
         words = WordsEngine.query(1);
         listView.setAdapter(new WordAdapter(words, R.layout.item_word));
+        listView.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+            @Override
+            public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
 
+            }
+        });
         letterBar.setOnPositionChangeListener(p -> {
 
             for (int i = 0; i < words.size(); i++) {
@@ -39,7 +46,7 @@ public class WordActivity extends BaseActivity {
                 boolean b = c.equals(String.valueOf((char) ('A' + p)));
                 if (b) {
                     listView.setSelection(i);
-                    
+                    letter.setText(c);
                     break;
                 }
             }
