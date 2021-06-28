@@ -17,28 +17,31 @@ import java.util.List;
 import a.icarus.component.BaseActivity;
 import a.icarus.component.BottomPopupWindow;
 import a.icarus.utils.SoftInputUtil;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 public class CollectActivity extends BaseActivity {
 
     private List<TranslateResult> results;
-    private final int[] type = {R.drawable.type_text, R.drawable.type_image, R.drawable.type_voice};
     private CollectAdapter adapter;
     private ListView listView;
     private BottomPopupWindow window;
     private int position = 0;
+    private ConstraintLayout empty;
 
     @Override
     protected void initView() {
         setContentView(R.layout.activity_collect);
         listView = findViewById(R.id.collect_list);
-
+        empty = findViewById(R.id.empty);
     }
 
     @Override
     protected void initData() {
+        setFinishView(R.id.back);
         results = LitePal.findAll(TranslateResult.class);
         Collections.reverse(results);
         adapter = new CollectAdapter(results, R.layout.result_item);
+        adapter.setOnEmptyListener(isEmpty -> empty.setVisibility(isEmpty ? View.VISIBLE : View.GONE));
         listView.setAdapter(adapter);
         View popupView = LayoutInflater.from(this).inflate(R.layout.window_copy_result, null);
         popupView.findViewById(R.id.item_0).setOnClickListener(v -> {
@@ -71,6 +74,7 @@ public class CollectActivity extends BaseActivity {
 
     }
 
+
     @Override
     protected void initListener() {
         listView.setOnItemClickListener((parent, view, position, id) -> {
@@ -78,6 +82,7 @@ public class CollectActivity extends BaseActivity {
             CollectActivity.this.position = position;
             window.show();
         });
+
     }
 
 

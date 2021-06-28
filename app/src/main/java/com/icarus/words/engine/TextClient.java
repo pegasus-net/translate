@@ -1,5 +1,9 @@
 package com.icarus.words.engine;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.icarus.words.engine.entity.ErrorCode;
@@ -12,6 +16,7 @@ import java.io.IOException;
 import a.icarus.utils.MD5;
 import a.icarus.utils.OkHttpUtil;
 import a.icarus.utils.Strings;
+import a.icarus.utils.ThreadPool;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -54,25 +59,31 @@ public class TextClient {
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                 ResponseBody body = response.body();
+                int code = 0;
+                TextResponse textResponse = null;
                 if (null == body) {
-                    callback.onResponse(ErrorCode.NET, null);
-                    return;
-                }
-                String json = body.string();
-                try {
-                    TextResponse textResponse = new Gson().fromJson(json, TextResponse.class);
-                    if (null == textResponse) {
-                        callback.onResponse(ErrorCode.JSON, null);
-                        return;
+                    code = ErrorCode.NET;
+                } else {
+                    String json = body.string();
+                    try {
+                        textResponse = new Gson().fromJson(json, TextResponse.class);
+                        if (null == textResponse) {
+                            code = ErrorCode.JSON;
+
+                        }
+                    } catch (JsonSyntaxException e) {
+                        e.printStackTrace();
+                        code = ErrorCode.JSON;
+                        textResponse = null;
                     }
-                    callback.onResponse(0, textResponse);
-                } catch (JsonSyntaxException e) {
-                    e.printStackTrace();
-                    callback.onResponse(ErrorCode.JSON, null);
                 }
+                final int fCode = code;
+                final TextResponse fResponse = textResponse;
+                new Handler(Looper.getMainLooper()).post(() -> callback.onResponse(fCode, fResponse));
             }
         });
     }
+
 
     public interface TextCallBack {
         void onResponse(int code, TextResponse response);

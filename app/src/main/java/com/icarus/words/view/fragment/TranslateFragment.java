@@ -14,6 +14,7 @@ import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -42,6 +43,7 @@ import com.icarus.words.data.TranslateResult;
 import com.icarus.words.engine.TranslateEngine;
 import com.icarus.words.engine.entity.ErrorCode;
 import com.icarus.words.view.activity.CollectActivity;
+import com.icarus.words.view.activity.WordActivity;
 
 import java.io.File;
 
@@ -187,7 +189,7 @@ public class TranslateFragment extends BaseFragment {
         resultCopy.setOnClickListener(v -> copy());
         translate.setOnClickListener(v -> translate());
         enterCollect.setOnClickListener(v -> {
-            Intent intent = new Intent(mActivity, CollectActivity.class);
+            Intent intent = new Intent(mActivity, WordActivity.class);
             startActivityForResult(intent, REQUEST_COLLECT);
         });
         inputGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -394,17 +396,15 @@ public class TranslateFragment extends BaseFragment {
         }
         waitTranslateFinish();
         TranslateEngine.textTranslate(inputStr, (state, response) -> {
-            mActivity.runOnUiThread(() -> {
-                if (state != 0) {
-                    translateFailed(state);
-                    return;
-                }
-                if (response.isSuccess()) {
-                    translateFinish(response.getSrc().trim(), response.getDst().trim());
-                } else {
-                    translateFailed(response.getError());
-                }
-            });
+            if (state != 0) {
+                translateFailed(state);
+                return;
+            }
+            if (response.isSuccess()) {
+                translateFinish(response.getSrc().trim(), response.getDst().trim());
+            } else {
+                translateFailed(response.getError());
+            }
             isTranslate = false;
         });
     }
@@ -513,10 +513,22 @@ public class TranslateFragment extends BaseFragment {
         loadingAnim.cancel();
         loading.setVisibility(View.GONE);
         isTranslate = false;
-        if (code != ErrorCode.CANCEL) {
-            ToastUtil.show(code + "翻译失败");
+        switch (code) {
+            case ErrorCode.CANCEL:
+                break;
+            case 69001:
+            case 69002:
+            case 69003:
+            case 69004:
+            case 69005:
+            case 69006:
+            case 69007:
+                ToastUtil.show("图片内容获取失败");
+                break;
+            default:
+                ToastUtil.show("翻译失败：" + code);
+                break;
         }
-
     }
 
     @Override

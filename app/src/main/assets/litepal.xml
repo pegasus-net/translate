@@ -4,6 +4,7 @@
     <version value="1" />
     <list>
         <mapping class = "com.icarus.words.data.TranslateResult"/>
+        <mapping class = "com.icarus.words.data.Word"/>
     </list>
 
 </litepal>
