@@ -37,11 +37,11 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.baidu.translate.asr.OnRecognizeListener;
 import com.baidu.translate.asr.TransAsrClient;
 import com.icarus.words.R;
-import com.icarus.words.crop.Crop;
 import com.icarus.words.data.TranslateResult;
 import com.icarus.words.engine.TranslateEngine;
 import com.icarus.words.engine.entity.ErrorCode;
 import com.icarus.words.view.activity.CollectActivity;
+import com.icarus.words.view.activity.CropActivity;
 
 import java.io.File;
 
@@ -64,6 +64,7 @@ public class TranslateFragment extends BaseFragment {
     private static final int VOICE = 2;
     public static final int REQUEST_PICTURE = 101;
     private static final int TAKE_PHOTO = 102;
+    private static final int REQUEST_CROP = 103;
     public static final int REQUEST_COLLECT = 201;
     private ConstraintLayout inputText, inputVoice, inputTip;
     private EditText input;
@@ -91,6 +92,7 @@ public class TranslateFragment extends BaseFragment {
     private Uri originalImageUri;
     private PopupWindow mPopWindow;
     private ValueAnimator animator;
+
 
     @Override
     protected int setLayout() {
@@ -281,7 +283,7 @@ public class TranslateFragment extends BaseFragment {
         mPopWindow.setOnDismissListener(() -> screenAlphaAnimStart(0.5f, 1.0f, 300));
         contentView.findViewById(R.id.item_close).setOnClickListener(v -> windowClose());
         contentView.findViewById(R.id.item_0).setOnClickListener(v -> {
-            File file = new File(mContext.getCacheDir(), "original_image.jpg");
+            File file = new File(mContext.getCacheDir(), "original_image.jpeg");
             originalImageUri = FileUtil.getEmptyUri(file);
             Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
             intent.putExtra(MediaStore.EXTRA_OUTPUT, originalImageUri);
@@ -436,10 +438,6 @@ public class TranslateFragment extends BaseFragment {
     }
 
 
-    private void cropOriginalBitmap(Uri uri) {
-        Crop.of(uri, FileUtil.getEmptyUri(new File(mContext.getCacheDir(), "crop_image.jpg"))).start(this);
-    }
-
     //TODO onActivityResult;
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -453,14 +451,14 @@ public class TranslateFragment extends BaseFragment {
                 collect.setChecked(false);
                 break;
             case TAKE_PHOTO: {
-                cropOriginalBitmap(originalImageUri);
+                CropActivity.actionStart(this, originalImageUri, REQUEST_CROP);
             }
             case REQUEST_PICTURE:
                 if (data != null) {
-                    cropOriginalBitmap(data.getData());
+                    CropActivity.actionStart(this, data.getData(), REQUEST_CROP);
                 }
                 break;
-            case Crop.REQUEST_CROP:
+            case REQUEST_CROP:
                 if (data != null) {
                     imgTranslate(data.getData());
                 }
@@ -475,11 +473,16 @@ public class TranslateFragment extends BaseFragment {
             Bitmap bitmap = BitmapFactory.decodeStream(resolver.openInputStream(uri));
             waitTranslateFinish();
             TranslateEngine.imgTranslate(bitmap, ocrResult -> {
-                if (null != ocrResult && ocrResult.getError() == 0) {
-                    translateFinish(ocrResult.getSumSrc().trim(), ocrResult.getSumDst().trim());
+                if (null != ocrResult) {
+                    if (ocrResult.getError() == 0) {
+                        translateFinish(ocrResult.getSumSrc().trim(), ocrResult.getSumDst().trim());
+                    } else {
+                        translateFailed(ocrResult.getError());
+                    }
                 } else {
-                    translateFailed(ocrResult.getError());
+                    translateFailed(ErrorCode.NET);
                 }
+
             });
         } catch (Exception e) {
             e.printStackTrace();

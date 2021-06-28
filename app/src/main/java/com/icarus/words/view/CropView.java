@@ -9,15 +9,16 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import androidx.annotation.NonNull;
 
-
 @SuppressWarnings("unused")
 public class CropView extends SurfaceView implements SurfaceHolder.Callback {
+
 
     private final Paint paint;
     private final Matrix matrix;
@@ -56,16 +57,20 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
     private static final int CROP_BOX_BOTTOM = 1 << 3;
     private static final int CROP_BOX_RIGHT = 1 << 4;
     private static final int IMAGE = 1 << 5;
+    private static final int CORRECTION = 1 << 6;
+    private static final float MAX_SCALE_AUTO = -1.0f;
 
     private Bitmap bitmap;
     private int sensitivity = 50;
     private int lineLen = 40;
-    private int lineWidth = 6;
+    private int lineWidth = 8;
     private int lineColor = 0xFF22AD81;
     private int shadowColor = 0x80000000;
     private int backgroundColor = 0xFFFFFFFF;
     private boolean allShow = true;
-    private float maxScale = 3.0f;
+    private float maxScale = MAX_SCALE_AUTO;
+    private float minSize = 60;
+
 
     public CropView(Context context) {
         this(context, null);
@@ -92,21 +97,18 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder holder) {
-        renderThread = new RepeatThread() {
-            @Override
-            protected void task() {
-                Canvas canvas = getHolder().lockCanvas();
-                if (canvas != null) {
-                    try {
-                        drawView(canvas);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    } finally {
-                        getHolder().unlockCanvasAndPost(canvas);
-                    }
+        renderThread = new RepeatThread(() -> {
+            Canvas canvas = getHolder().lockCanvas();
+            if (canvas != null) {
+                try {
+                    drawView(canvas);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    getHolder().unlockCanvasAndPost(canvas);
                 }
             }
-        };
+        });
         renderThread.start();
     }
 
@@ -154,9 +156,7 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
                 dx = event.getX() - lastX_0;
                 dy = event.getY() - lastY_0;
                 if (mode == DRAG) {
-                    if (Math.abs(dx) + Math.abs(dy) >= 3) {
-                        drag(dx, dy);
-                    }
+                    drag(dx, dy, operationId);
                 } else if (mode == SCALE) {
                     if (event.getPointerCount() >= 2) {
                         double sqrt1 = Math.sqrt((lastX_0 - lastX_1) * (lastX_0 - lastX_1)
@@ -180,49 +180,63 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
         return true;
     }
 
-    private void drag(float dx, float dy) {
-        switch (operationId) {
-            case IMAGE:
-                applyTranslate(dx, dy);
+    private void dragCropBox(float dx, float dy, int id) {
+        float dw = displayArea.right - displayArea.left;
+        float dh = displayArea.bottom - displayArea.top;
+        float allowMinSize = Math.min(this.minSize, Math.min(dw, dh));
+        switch (id) {
+            case CORRECTION:
+//                cropArea.left = Math.max(cropArea.left, displayArea.left);
+//                cropArea.right = Math.min(cropArea.right, displayArea.right);
+//                cropArea.top = Math.max(cropArea.top, displayArea.top);
+//                cropArea.bottom = Math.min(cropArea.bottom, displayArea.bottom);
+                while (cropArea.right - cropArea.left < allowMinSize) {
+                    cropArea.left = Math.max(cropArea.left - 0.5f, displayArea.left);
+                    cropArea.right = Math.min(cropArea.right + 0.5f, displayArea.right);
+                }
+                while (cropArea.bottom - cropArea.top < allowMinSize) {
+                    cropArea.top = Math.max(cropArea.top - 0.5f, displayArea.top);
+                    cropArea.bottom = Math.min(cropArea.bottom + 0.5f, displayArea.bottom);
+                }
                 break;
             case CROP_BOX_LEFT | CROP_BOX_TOP:
-                cropArea.left = Math.min(cropArea.right - 3 * sensitivity,
+                cropArea.left = Math.min(cropArea.right - allowMinSize,
                         Math.max(cropArea.left + dx, displayArea.left));
-                cropArea.top = Math.min(cropArea.bottom - 3 * sensitivity,
+                cropArea.top = Math.min(cropArea.bottom - allowMinSize,
                         Math.max(cropArea.top + dy, displayArea.top));
                 break;
             case CROP_BOX_RIGHT | CROP_BOX_TOP:
-                cropArea.right = Math.max(cropArea.left + 3 * sensitivity,
+                cropArea.right = Math.max(cropArea.left + allowMinSize,
                         Math.min(cropArea.right + dx, displayArea.right));
-                cropArea.top = Math.min(cropArea.bottom - 3 * sensitivity,
+                cropArea.top = Math.min(cropArea.bottom - allowMinSize,
                         Math.max(cropArea.top + dy, displayArea.top));
                 break;
             case CROP_BOX_CENTER | CROP_BOX_TOP:
-                cropArea.top = Math.min(cropArea.bottom - 3 * sensitivity,
+                cropArea.top = Math.min(cropArea.bottom - allowMinSize,
                         Math.max(cropArea.top + dy, displayArea.top));
                 break;
             case CROP_BOX_LEFT | CROP_BOX_BOTTOM:
-                cropArea.left = Math.min(cropArea.right - 3 * sensitivity,
+                cropArea.left = Math.min(cropArea.right - allowMinSize,
                         Math.max(cropArea.left + dx, displayArea.left));
-                cropArea.bottom = Math.max(cropArea.top + 3 * sensitivity,
+                cropArea.bottom = Math.max(cropArea.top + allowMinSize,
                         Math.min(cropArea.bottom + dy, displayArea.bottom));
                 break;
             case CROP_BOX_RIGHT | CROP_BOX_BOTTOM:
-                cropArea.right = Math.max(cropArea.left + 3 * sensitivity,
+                cropArea.right = Math.max(cropArea.left + allowMinSize,
                         Math.min(cropArea.right + dx, displayArea.right));
-                cropArea.bottom = Math.max(cropArea.top + 3 * sensitivity,
+                cropArea.bottom = Math.max(cropArea.top + allowMinSize,
                         Math.min(cropArea.bottom + dy, displayArea.bottom));
                 break;
             case CROP_BOX_CENTER | CROP_BOX_BOTTOM:
-                cropArea.bottom = Math.max(cropArea.top + 3 * sensitivity,
+                cropArea.bottom = Math.max(cropArea.top + allowMinSize,
                         Math.min(cropArea.bottom + dy, displayArea.bottom));
                 break;
             case CROP_BOX_LEFT | CROP_BOX_CENTER:
-                cropArea.left = Math.min(cropArea.right - 3 * sensitivity,
+                cropArea.left = Math.min(cropArea.right - allowMinSize,
                         Math.max(cropArea.left + dx, displayArea.left));
                 break;
             case CROP_BOX_RIGHT | CROP_BOX_CENTER:
-                cropArea.right = Math.max(cropArea.left + 3 * sensitivity,
+                cropArea.right = Math.max(cropArea.left + allowMinSize,
                         Math.min(cropArea.right + dx, displayArea.right));
                 break;
             case CROP_BOX_CENTER:
@@ -247,6 +261,14 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
                 cropArea.top = cropArea.top + moveY;
                 cropArea.bottom = cropArea.bottom + moveY;
                 break;
+        }
+    }
+
+    private void drag(float dx, float dy, int operationId) {
+        if (operationId == IMAGE) {
+            applyTranslate(dx, dy);
+        } else {
+            dragCropBox(dx, dy, operationId);
         }
     }
 
@@ -288,40 +310,51 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
         drawPathOut(canvas, hCropLine, cropArea);
         paint.setColor(lineColor);
         paint.setStyle(Paint.Style.FILL);
-
+        float cw = cropArea.right - cropArea.left;
+        float ch = cropArea.bottom - cropArea.top;
+        float allowLineLen = Math.min(this.lineLen, Math.min(cw, ch));
+        float allowLineWidth = Math.min(this.lineWidth, Math.min(cw, ch));
         hCropLine.set(cropArea.left, cropArea.top,
-                cropArea.left + lineLen, cropArea.top + lineWidth);
+                cropArea.left + allowLineLen, cropArea.top + allowLineWidth);
         vCropLine.set(cropArea.left, cropArea.top,
-                cropArea.left + lineWidth, cropArea.top + lineLen);
-        drawPathOr(canvas, hCropLine, vCropLine);
-        hCropLine.set(cropArea.right - lineLen, cropArea.top,
-                cropArea.right, cropArea.top + lineWidth);
-        vCropLine.set(cropArea.right - lineWidth, cropArea.top,
-                cropArea.right, cropArea.top + lineLen);
-        drawPathOr(canvas, hCropLine, vCropLine);
-        hCropLine.set(cropArea.left, cropArea.bottom - lineWidth,
-                cropArea.left + lineLen, cropArea.bottom);
-        vCropLine.set(cropArea.left, cropArea.bottom - lineLen,
-                cropArea.left + lineWidth, cropArea.bottom);
-        drawPathOr(canvas, hCropLine, vCropLine);
-        hCropLine.set(cropArea.right - lineLen, cropArea.bottom - lineWidth,
+                cropArea.left + allowLineWidth, cropArea.top + allowLineLen);
+        drawPath(canvas, hCropLine, vCropLine);
+        hCropLine.set(cropArea.right - allowLineLen, cropArea.top,
+                cropArea.right, cropArea.top + allowLineWidth);
+        vCropLine.set(cropArea.right - allowLineWidth, cropArea.top,
+                cropArea.right, cropArea.top + allowLineLen);
+        drawPath(canvas, hCropLine, vCropLine);
+        hCropLine.set(cropArea.left, cropArea.bottom - allowLineWidth,
+                cropArea.left + allowLineLen, cropArea.bottom);
+        vCropLine.set(cropArea.left, cropArea.bottom - allowLineLen,
+                cropArea.left + allowLineWidth, cropArea.bottom);
+        drawPath(canvas, hCropLine, vCropLine);
+        hCropLine.set(cropArea.right - allowLineLen, cropArea.bottom - allowLineWidth,
                 cropArea.right, cropArea.bottom);
-        vCropLine.set(cropArea.right - lineWidth, cropArea.bottom - lineLen,
+        vCropLine.set(cropArea.right - allowLineWidth, cropArea.bottom - allowLineLen,
                 cropArea.right, cropArea.bottom);
-        drawPathOr(canvas, hCropLine, vCropLine);
+        drawPath(canvas, hCropLine, vCropLine);
         if (allShow) {
-            hCropLine.set((cropArea.right + cropArea.left) / 2 - lineLen / 2.0f, cropArea.top,
-                    (cropArea.right + cropArea.left) / 2 + lineLen / 2.0f, cropArea.top + lineWidth);
-            drawPathAnd(canvas, hCropLine, cropArea);
-            hCropLine.set((cropArea.right + cropArea.left) / 2 - lineLen / 2.0f, cropArea.bottom - lineWidth,
-                    (cropArea.right + cropArea.left) / 2 + lineLen / 2.0f, cropArea.bottom);
-            drawPathAnd(canvas, hCropLine, cropArea);
-            vCropLine.set(cropArea.left, (cropArea.top + cropArea.bottom) / 2 - lineLen / 2.0f,
-                    cropArea.left + lineWidth, (cropArea.top + cropArea.bottom) / 2 + lineLen / 2.0f);
-            drawPathAnd(canvas, vCropLine, cropArea);
-            vCropLine.set(cropArea.right - lineWidth, (cropArea.top + cropArea.bottom) / 2 - lineLen / 2.0f,
-                    cropArea.right, (cropArea.top + cropArea.bottom) / 2 + lineLen / 2.0f);
-            drawPathAnd(canvas, vCropLine, cropArea);
+            hCropLine.set((cropArea.right + cropArea.left) / 2 - allowLineLen / 2.0f, cropArea.top,
+                    (cropArea.right + cropArea.left) / 2 + allowLineLen / 2.0f, cropArea.top + allowLineWidth);
+            vCropLine.set((cropArea.right + cropArea.left) / 2 - allowLineLen / 2.0f, cropArea.top,
+                    (cropArea.right + cropArea.left) / 2 + allowLineLen / 2.0f, cropArea.top + allowLineWidth);
+            drawPath(canvas, hCropLine, vCropLine);
+            hCropLine.set((cropArea.right + cropArea.left) / 2 - allowLineLen / 2.0f, cropArea.bottom - allowLineWidth,
+                    (cropArea.right + cropArea.left) / 2 + allowLineLen / 2.0f, cropArea.bottom);
+            vCropLine.set((cropArea.right + cropArea.left) / 2 - allowLineLen / 2.0f, cropArea.bottom - allowLineWidth,
+                    (cropArea.right + cropArea.left) / 2 + allowLineLen / 2.0f, cropArea.bottom);
+            drawPath(canvas, hCropLine, vCropLine);
+            hCropLine.set(cropArea.left, (cropArea.top + cropArea.bottom) / 2 - allowLineLen / 2.0f,
+                    cropArea.left + allowLineWidth, (cropArea.top + cropArea.bottom) / 2 + allowLineLen / 2.0f);
+            vCropLine.set(cropArea.left, (cropArea.top + cropArea.bottom) / 2 - allowLineLen / 2.0f,
+                    cropArea.left + allowLineWidth, (cropArea.top + cropArea.bottom) / 2 + allowLineLen / 2.0f);
+            drawPath(canvas, vCropLine, vCropLine);
+            hCropLine.set(cropArea.right - allowLineWidth, (cropArea.top + cropArea.bottom) / 2 - allowLineLen / 2.0f,
+                    cropArea.right, (cropArea.top + cropArea.bottom) / 2 + allowLineLen / 2.0f);
+            vCropLine.set(cropArea.right - allowLineWidth, (cropArea.top + cropArea.bottom) / 2 - allowLineLen / 2.0f,
+                    cropArea.right, (cropArea.top + cropArea.bottom) / 2 + allowLineLen / 2.0f);
+            drawPath(canvas, vCropLine, vCropLine);
         }
     }
 
@@ -334,7 +367,7 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
         canvas.drawPath(pathX, paint);
     }
 
-    private void drawPathOr(Canvas canvas, RectF rectA, RectF rectB) {
+    private void drawPath(Canvas canvas, RectF rectA, RectF rectB) {
         pathA.rewind();
         pathA.addRect(rectA, Path.Direction.CCW);
         pathB.rewind();
@@ -343,14 +376,6 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
         canvas.drawPath(pathX, paint);
     }
 
-    private void drawPathAnd(Canvas canvas, RectF rectA, RectF rectB) {
-        pathA.rewind();
-        pathA.addRect(rectA, Path.Direction.CCW);
-        pathB.rewind();
-        pathB.addRect(rectB, Path.Direction.CCW);
-        pathX.op(pathA, pathB, Path.Op.INTERSECT);
-        canvas.drawPath(pathX, paint);
-    }
 
     private void setBaseScale() {
         if (bitmap != null) {
@@ -358,12 +383,13 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
             int bh = bitmap.getHeight();
             if (bw > width || bh > height) {
                 baseScale = Math.min(height / bh, width / bw);
-            } else if (bw < width / 2 || bh < height / 2) {
-                baseScale = Math.max(height / bh, width / bh);
             } else {
                 baseScale = 1;
             }
             tScale = 1.0f;
+            if (maxScale == MAX_SCALE_AUTO) {
+                maxScale = 2 / baseScale;
+            }
             matrix.setScale(baseScale, baseScale);
             scaleChanged();
             float displayWidth = displayArea.right - displayArea.left;
@@ -372,7 +398,7 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
                     displayArea.top + displayHeight / 4,
                     displayArea.right - displayWidth / 4,
                     displayArea.bottom - displayHeight / 4);
-
+            dragCropBox(0, 0, CORRECTION);
         }
     }
 
@@ -383,18 +409,21 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
                 y > cropArea.bottom + sensitivity) {
             return IMAGE;
         }
+        float cw = cropArea.right - cropArea.left;
+        float ch = cropArea.bottom - cropArea.top;
+        float min = Math.min(sensitivity, Math.min(cw, ch) / 3);
         int xType;
         int yType;
         if (x <= cropArea.left + sensitivity) {
             xType = CROP_BOX_LEFT;
-        } else if (x >= cropArea.right - sensitivity) {
+        } else if (x >= cropArea.right - min) {
             xType = CROP_BOX_RIGHT;
         } else {
             xType = CROP_BOX_CENTER;
         }
-        if (y <= cropArea.top + sensitivity) {
+        if (y <= cropArea.top + min) {
             yType = CROP_BOX_TOP;
-        } else if (y >= cropArea.bottom - sensitivity) {
+        } else if (y >= cropArea.bottom - min) {
             yType = CROP_BOX_BOTTOM;
         } else {
             yType = CROP_BOX_CENTER;
@@ -457,6 +486,7 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
                 Math.min(cropArea.right, displayArea.right),
                 Math.min(cropArea.bottom, displayArea.bottom));
         applyTranslate(0, 0);
+        dragCropBox(0, 0, CORRECTION);
     }
 
     /*public method*/
@@ -502,6 +532,10 @@ public class CropView extends SurfaceView implements SurfaceHolder.Callback {
 
     public void setMaxScale(float maxScale) {
         this.maxScale = maxScale;
+    }
+
+    public void setMinSize(float minSize) {
+        this.minSize = minSize;
     }
 
     @Override
