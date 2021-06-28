@@ -37,11 +37,11 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import com.baidu.translate.asr.OnRecognizeListener;
 import com.baidu.translate.asr.TransAsrClient;
 import com.icarus.words.R;
+import com.icarus.words.crop.Crop;
 import com.icarus.words.data.TranslateResult;
 import com.icarus.words.engine.TranslateEngine;
 import com.icarus.words.engine.entity.ErrorCode;
 import com.icarus.words.view.activity.CollectActivity;
-import com.icarus.words.view.activity.CropActivity;
 
 import java.io.File;
 
@@ -65,7 +65,6 @@ public class TranslateFragment extends BaseFragment {
     public static final int REQUEST_PICTURE = 101;
     private static final int TAKE_PHOTO = 102;
     public static final int REQUEST_COLLECT = 201;
-    private static final int REQUEST_CROP = 103;
     private ConstraintLayout inputText, inputVoice, inputTip;
     private EditText input;
     private TextView resultDisplay;
@@ -438,11 +437,10 @@ public class TranslateFragment extends BaseFragment {
 
 
     private void cropOriginalBitmap(Uri uri) {
-        Intent intent = new Intent(mContext, CropActivity.class);
-        intent.setData(uri);
-        startActivityForResult(intent, REQUEST_CROP);
+        Crop.of(uri, FileUtil.getEmptyUri(new File(mContext.getCacheDir(), "crop_image.jpg"))).start(this);
     }
 
+    //TODO onActivityResult;
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -462,7 +460,7 @@ public class TranslateFragment extends BaseFragment {
                     cropOriginalBitmap(data.getData());
                 }
                 break;
-            case REQUEST_CROP:
+            case Crop.REQUEST_CROP:
                 if (data != null) {
                     imgTranslate(data.getData());
                 }
